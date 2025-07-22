@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Blackjack</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .cards { display: flex; gap: 10px; margin: 10px 0; }
+        .card { width: 40px; height: 60px; background: #fff; border: 2px solid #888; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: bold; }
+        .blackjack-btn { margin: 10px 5px 0 0; padding: 8px 18px; font-size: 1rem; background: #e74c3c; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="reelbets-logo.svg" alt="REELBETS Logo" style="display:block;margin:24px auto 8px auto;width:140px;max-width:90vw;">
+        <h1>Blackjack</h1>
+        <div id="balanceDisplay"></div>
+        <form id="blackjackForm">
+            <label for="bet">Bet (ZAR):</label>
+            <input type="number" id="bet" name="bet" min="1" step="1" required>
+            <button type="submit" class="blackjack-btn">Deal</button>
+        </form>
+        <div id="gameArea" style="margin-top:20px;"></div>
+        <div id="blackjackResult" class="message"></div>
+        <nav>
+            <a href="home.html">Home</a>
+        </nav>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+            window.location.href = 'index.html';
+        }
+        function updateBalance() {
+            document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+        }
+        updateBalance();
+        let deck, player, dealer, bet, balance;
+        function getCard() {
+            const suits = ['♠️','♥️','♦️','♣️'];
+            const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+            return {rank: ranks[Math.floor(Math.random()*13)], suit: suits[Math.floor(Math.random()*4)]};
+        }
+        function cardValue(card) {
+            if (card.rank === 'A') return 11;
+            if (['K','Q','J'].includes(card.rank)) return 10;
+            return parseInt(card.rank);
+        }
+        function handValue(hand) {
+            let val = hand.reduce((a,c) => a+cardValue(c),0);
+            let aces = hand.filter(c=>c.rank==='A').length;
+            while (val > 21 && aces > 0) { val -= 10; aces--; }
+            return val;
+        }
+        function render() {
+            const area = document.getElementById('gameArea');
+            area.innerHTML = `<div><b>Your Hand:</b> <span class="cards">${player.map(c=>`<span class='card'>${c.rank}${c.suit}</span>`).join('')}</span> (${handValue(player)})</div>`+
+                `<div><b>Dealer:</b> <span class="cards">${dealer.map((c,i)=>i===0?'<span class=card>?</span>':`<span class='card'>${c.rank}${c.suit}</span>`).join('')}</span></div>`;
+        }
+        function endGame(msg, win) {
+            document.getElementById('blackjackResult').innerHTML = msg;
+            balance += win;
+            sessionStorage.setItem('balance', balance.toFixed(2));
+            updateBalance();
+        }
+        document.getElementById('blackjackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            bet = parseFloat(document.getElementById('bet').value);
+            balance = parseFloat(sessionStorage.getItem('balance'));
+            if (isNaN(bet) || bet <= 0 || bet > balance) {
+                document.getElementById('blackjackResult').innerHTML = 'Invalid bet.';
+                return;
+            }
+            deck = Array.from({length:52},(_,i)=>i);
+            player = [getCard(),getCard()];
+            dealer = [getCard(),getCard()];
+            document.getElementById('blackjackResult').textContent = '';
+            render();
+            showActions();
+        });
+        function showActions() {
+            const area = document.getElementById('gameArea');
+            const btns = document.createElement('div');
+            btns.innerHTML = `<button class='blackjack-btn' id='hitBtn'>Hit</button><button class='blackjack-btn' id='standBtn'>Stand</button>`;
+            area.appendChild(btns);
+            document.getElementById('hitBtn').onclick = function() {
+                player.push(getCard());
+                render();
+                if (handValue(player) > 21) endGame('Bust! You lose '+bet+' ZAR.', -bet);
+            };
+            document.getElementById('standBtn').onclick = function() {
+                while (handValue(dealer) < 17) dealer.push(getCard());
+                let p = handValue(player), d = handValue(dealer);
+                let msg = `<div><b>Your Hand:</b> <span class="cards">${player.map(c=>`<span class='card'>${c.rank}${c.suit}</span>`).join('')}</span> (${p})</div>`+
+                    `<div><b>Dealer:</b> <span class="cards">${dealer.map(c=>`<span class='card'>${c.rank}${c.suit}</span>`).join('')}</span> (${d})</div>`;
+                if (d > 21 || p > d) msg += `<br>You win ${bet} ZAR!`;
+                else if (p === d) msg += '<br>Push!';
+                else msg += `<br>You lose ${bet} ZAR.`;
+                endGame(msg, d > 21 || p > d ? bet : p === d ? 0 : -bet);
+            };
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Slot Machine</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .slot-machine {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+        .slot-reel {
+            font-size: 2.5rem;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #888;
+            border-radius: 10px;
+            margin: 0 10px;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .slot-spin-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .info-modal-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .info-modal {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+        }
+        .info-modal h2 {
+            margin-top: 0;
+        }
+        .info-modal ul {
+            list-style: none;
+            padding: 0;
+        }
+        .info-modal li {
+            margin: 10px 0;
+        }
+        .info-modal button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .hide {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Slot Machine</h1>
+        <div id="balanceDisplay"></div>
+        <form id="slotForm">
+            <label for="bet">Bet (ZAR):</label>
+            <input type="number" id="bet" name="bet" min="0.50" step="0.50" required>
+            <button type="submit" class="slot-spin-btn">Spin</button>
+        </form>
+        <div class="slot-machine">
+            <div class="slot-reel" id="reel1">🍒</div>
+            <div class="slot-reel" id="reel2">🍋</div>
+            <div class="slot-reel" id="reel3">🔔</div>
+        </div>
+        <div id="slotResult" class="message"></div>
+        <button id="infoBtn" class="slot-spin-btn" style="margin-bottom:10px;float:right;">ℹ️ Info</button>
+        <nav>
+            <a href="home.html">Home</a>
+        </nav>
+    </div>
+    <div id="infoModalBg" class="info-modal-bg hide">
+      <div class="info-modal">
+        <button id="closeInfoModal">✖</button>
+        <h2>How to Win</h2>
+        <ul>
+          <li>3 matching symbols: win!</li>
+          <li>3 cherries (🍒): highest payout.</li>
+          <li>3 bells (🔔): medium payout.</li>
+          <li>3 lemons (🍋): small payout.</li>
+        </ul>
+      </div>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+            window.location.href = 'index.html';
+        }
+        function updateBalance() {
+            document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+        }
+        updateBalance();
+        const symbols = ['🍒', '🍋', '🔔', '🍀', '7️⃣', '🍉'];
+        const payouts = {
+            '🍒🍒🍒': 5,
+            '🍋🍋🍋': 4,
+            '🔔🔔🔔': 10,
+            '🍀🍀🍀': 8,
+            '7️⃣7️⃣7️⃣': 20,
+            '🍉🍉🍉': 6
+        };
+        document.getElementById('slotForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let bet = parseFloat(document.getElementById('bet').value);
+            let balance = parseFloat(sessionStorage.getItem('balance'));
+            if (isNaN(bet) || bet <= 0 || bet > balance) {
+                document.getElementById('slotResult').textContent = 'Invalid bet.';
+                return;
+            }
+            // Spin animation
+            let reels = [0, 0, 0];
+            let spins = 15;
+            let spinCount = 0;
+            let spinInterval = setInterval(() => {
+                reels = [
+                    Math.floor(Math.random() * symbols.length),
+                    Math.floor(Math.random() * symbols.length),
+                    Math.floor(Math.random() * symbols.length)
+                ];
+                document.getElementById('reel1').textContent = symbols[reels[0]];
+                document.getElementById('reel2').textContent = symbols[reels[1]];
+                document.getElementById('reel3').textContent = symbols[reels[2]];
+                spinCount++;
+                if (spinCount >= spins) {
+                    clearInterval(spinInterval);
+                    // Evaluate result
+                    let result = symbols[reels[0]] + symbols[reels[1]] + symbols[reels[2]];
+                    let payout = payouts[result] || 0;
+                    if (payout > 0) {
+                        let win = bet * payout;
+                        balance += win - bet;
+                        document.getElementById('slotResult').textContent = `You won ${win.toFixed(2)} ZAR! (${result})`;
+                    } else {
+                        balance -= bet;
+                        document.getElementById('slotResult').textContent = `No win. You lost ${bet.toFixed(2)} ZAR.`;
+                    }
+                    sessionStorage.setItem('balance', balance.toFixed(2));
+                    updateBalance();
+                }
+            }, 80);
+        });
+        document.getElementById('infoBtn').onclick = function() {
+          document.getElementById('infoModalBg').classList.remove('hide');
+        };
+        document.getElementById('closeInfoModal').onclick = function() {
+          document.getElementById('infoModalBg').classList.add('hide');
+        };
+    });
+    </script>
+</body>
+</html>

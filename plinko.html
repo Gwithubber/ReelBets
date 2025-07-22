@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Plinko</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #1a2233;
+            color: #fff;
+        }
+        .container {
+            background: #232b3e;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px #0008;
+            padding: 32px 16px 24px 16px;
+            margin: 40px auto;
+            max-width: 480px;
+        }
+        .plinko-board {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0 10px 0;
+        }
+        .plinko-row {
+            display: flex;
+            justify-content: center;
+            height: 28px;
+        }
+        .plinko-peg {
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            margin: 0 8px;
+            box-shadow: 0 0 4px #000a;
+        }
+        .plinko-ball {
+            width: 16px;
+            height: 16px;
+            background: #e74c3c;
+            border-radius: 50%;
+            margin: 0 8px;
+            box-shadow: 0 0 8px #e74c3c88;
+            z-index: 2;
+        }
+        .plinko-slot {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(180deg, #f39c12 60%, #e74c3c 100%);
+            border-radius: 8px;
+            margin: 0 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px #0006;
+        }
+        .plinko-slot.big-win {
+            background: linear-gradient(180deg, #2ecc40 60%, #27ae60 100%);
+        }
+        .plinko-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0006;
+        }
+        #plinkoResult {
+            min-height: 32px;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Plinko</h1>
+        <div id="balanceDisplay"></div>
+        <form id="plinkoForm">
+            <label for="bet">Bet (ZAR):</label>
+            <input type="number" id="bet" name="bet" min="1" step="1" required>
+            <button type="submit" class="plinko-btn">Drop Ball</button>
+        </form>
+        <div class="plinko-board" id="plinkoBoard"></div>
+        <div id="plinkoResult" class="message"></div>
+        <nav>
+            <a href="home.html">Home</a>
+        </nav>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+            window.location.href = 'index.html';
+        }
+        function updateBalance() {
+            document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+        }
+        updateBalance();
+        const rows = 10;
+        const slots = 11;
+        const multipliers = [0.2, 0.5, 1, 2, 5, 10, 5, 2, 1, 0.5, 0.2];
+        function drawBoard(ballPath, currentRow) {
+            const board = document.getElementById('plinkoBoard');
+            board.innerHTML = '';
+            for (let r = 0; r < rows; r++) {
+                const row = document.createElement('div');
+                row.className = 'plinko-row';
+                for (let c = 0; c <= r; c++) {
+                    const peg = document.createElement('div');
+                    peg.className = 'plinko-peg';
+                    row.appendChild(peg);
+                }
+                // Draw ball if on this row
+                if (ballPath && currentRow === r) {
+                    const ball = document.createElement('div');
+                    ball.className = 'plinko-ball';
+                    let col = ballPath[r];
+                    row.children[col].appendChild(ball);
+                }
+                board.appendChild(row);
+            }
+            // Draw slots
+            const slotRow = document.createElement('div');
+            slotRow.className = 'plinko-row';
+            for (let s = 0; s < slots; s++) {
+                const slot = document.createElement('div');
+                slot.className = 'plinko-slot' + (multipliers[s] >= 5 ? ' big-win' : '');
+                slot.textContent = 'x' + multipliers[s];
+                slotRow.appendChild(slot);
+            }
+            board.appendChild(slotRow);
+        }
+        drawBoard();
+        document.getElementById('plinkoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let bet = parseFloat(document.getElementById('bet').value);
+            let balance = parseFloat(sessionStorage.getItem('balance'));
+            if (isNaN(bet) || bet <= 0 || bet > balance) {
+                document.getElementById('plinkoResult').textContent = 'Invalid bet.';
+                return;
+            }
+            // Simulate ball drop
+            let pos = Math.floor(slots / 2);
+            for (let r = 0; r < rows; r++) {
+                pos += Math.random() < 0.5 ? -1 : 1;
+                pos = Math.max(0, Math.min(slots - 1, pos));
+            }
+            drawBoard(pos);
+            // Show ball in slot
+            const slotRow = document.querySelector('.plinko-board .plinko-row:last-child');
+            const ball = document.createElement('div');
+            ball.className = 'plinko-ball';
+            slotRow.children[pos].appendChild(ball);
+            let multiplier = multipliers[pos] || 0;
+            let win = bet * multiplier;
+            if (win > 0) {
+                balance += win - bet;
+                document.getElementById('plinkoResult').textContent = `You won ${win.toFixed(2)} ZAR! (x${multiplier})`;
+            } else {
+                balance -= bet;
+                document.getElementById('plinkoResult').textContent = `No win. You lost ${bet.toFixed(2)} ZAR.`;
+            }
+            sessionStorage.setItem('balance', balance.toFixed(2));
+            updateBalance();
+        });
+    });
+    </script>
+</body>
+</html>

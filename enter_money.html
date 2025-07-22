@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Deposit</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <img src="reelbets-logo.svg" alt="REELBETS Logo" style="display:block;margin:24px auto 8px auto;width:140px;max-width:90vw;">
+        <h1>Deposit Funds</h1>
+        <div id="userDisplay" style="font-size:1em;color:#ffe066;margin-bottom:4px;"></div>
+        <form id="depositForm">
+            <input type="number" id="depositAmount" min="1" placeholder="Deposit amount" required style="width:120px;">
+            <button type="submit" style="width:auto;">Deposit</button>
+        </form>
+        <div id="depositMessage" class="message" style="color:#28a745;"></div>
+        <div style="margin-top:1em;text-align:center;">
+            <a href="home.html">Back to Home</a>
+        </div>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    // Redirect if not logged in
+    if (!sessionStorage.getItem('currentUser') || sessionStorage.getItem('age_verified') !== 'true') {
+        window.location.href = 'index.html';
+    }
+    document.getElementById('userDisplay').textContent = 'User: ' + sessionStorage.getItem('currentUser');
+    document.getElementById('depositForm').onsubmit = function(e) {
+        e.preventDefault();
+        var amt = parseFloat(document.getElementById('depositAmount').value);
+        if (isNaN(amt) || amt <= 0) {
+            document.getElementById('depositMessage').textContent = 'Enter a valid amount.';
+            return;
+        }
+        var bal = parseFloat(sessionStorage.getItem('balance')) || 0;
+        var newBal = bal + amt;
+        sessionStorage.setItem('balance', newBal.toFixed(2));
+        if (typeof setBalance === 'function') setBalance(newBal);
+        document.getElementById('depositMessage').textContent = 'Deposit successful!';
+        document.getElementById('depositForm').reset();
+        setTimeout(function(){ window.location.href = 'home.html'; }, 1200);
+    };
+    </script>
+</body>
+</html>

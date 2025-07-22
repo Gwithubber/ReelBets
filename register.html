@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Register</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <img src="reelbets-logo.svg" alt="REELBETS Logo" style="display:block;margin:24px auto 8px auto;width:140px;max-width:90vw;">
+        <h1>Register</h1>
+        <form id="registerForm">
+            <input type="text" id="registerUsername" placeholder="Username" required>
+            <input type="password" id="registerPassword" placeholder="Password" required>
+            <button type="submit">Register</button>
+        </form>
+        <div id="registerMessage" class="message"></div>
+        <div style="margin-top:1em;text-align:center;">
+            <a href="index.html">Back to Login</a>
+        </div>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const registerForm = document.getElementById('registerForm');
+        const registerMessage = document.getElementById('registerMessage');
+        if (registerForm) {
+            registerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('registerUsername').value.trim();
+                const password = document.getElementById('registerPassword').value;
+                if (!username || !password) {
+                    registerMessage.textContent = 'Please enter a username and password.';
+                    return;
+                }
+                let users = JSON.parse(localStorage.getItem('users') || '[]');
+                if (users.find(u => u.username === username)) {
+                    registerMessage.textContent = 'Username already exists.';
+                    return;
+                }
+                // Simple hash for demo only (not secure)
+                let h = 0; for (let i = 0; i < password.length; i++) h = ((h<<5)-h)+password.charCodeAt(i); h = h.toString();
+                users.push({ username, passwordHash: h, balance: 0 });
+                localStorage.setItem('users', JSON.stringify(users));
+                registerMessage.style.color = '#28a745';
+                registerMessage.textContent = 'Registration successful! Redirecting to login...';
+                setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+            });
+        }
+    });
+    </script>
+</body>
+</html>

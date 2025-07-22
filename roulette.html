@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Roulette</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Roulette Game</h1>
+        <div id="balanceDisplay"></div>
+        <form id="rouletteForm">
+            <label for="bet">Bet (ZAR):</label>
+            <input type="number" id="bet" name="bet" min="0.01" step="0.01" required>
+            <label for="color">Choose color:</label>
+            <select id="color" name="color">
+                <option value="red">Red (2x)</option>
+                <option value="black">Black (2x)</option>
+                <option value="green">Green (35x)</option>
+            </select>
+            <button type="submit">Spin</button>
+        </form>
+        <div id="rouletteWheel" class="roulette-wheel">
+            <canvas id="bigRouletteCanvas" width="320" height="320" style="display:none;margin:0 auto;"></canvas>
+        </div>
+        <div id="rouletteResult" class="message"></div>
+        <nav>
+            <a href="home.html">Home</a>
+        </nav>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // European roulette wheel: 0 (green), 1-36 alternating red/black
+        const wheelNumbers = [
+            {num: 0, color: 'green'},
+            {num: 32, color: 'red'}, {num: 15, color: 'black'}, {num: 19, color: 'red'}, {num: 4, color: 'black'},
+            {num: 21, color: 'red'}, {num: 2, color: 'black'}, {num: 25, color: 'red'}, {num: 17, color: 'black'},
+            {num: 34, color: 'red'}, {num: 6, color: 'black'}, {num: 27, color: 'red'}, {num: 13, color: 'black'},
+            {num: 36, color: 'red'}, {num: 11, color: 'black'}, {num: 30, color: 'red'}, {num: 8, color: 'black'},
+            {num: 23, color: 'red'}, {num: 10, color: 'black'}, {num: 5, color: 'red'}, {num: 24, color: 'black'},
+            {num: 16, color: 'red'}, {num: 33, color: 'black'}, {num: 1, color: 'red'}, {num: 20, color: 'black'},
+            {num: 14, color: 'red'}, {num: 31, color: 'black'}, {num: 9, color: 'red'}, {num: 22, color: 'black'},
+            {num: 18, color: 'red'}, {num: 29, color: 'black'}, {num: 7, color: 'red'}, {num: 28, color: 'black'},
+            {num: 12, color: 'red'}, {num: 35, color: 'black'}, {num: 3, color: 'red'}, {num: 26, color: 'black'}
+        ];
+        if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+            window.location.href = 'index.html';
+        }
+        function updateBalance() {
+            document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+        }
+        updateBalance();
+        const wheel = document.getElementById('rouletteWheel');
+        function drawRouletteWheel(resultIndex, ballIndex, spinning) {
+            const canvas = document.getElementById('bigRouletteCanvas');
+            const ctx = canvas.getContext('2d');
+            const size = 320;
+            const center = size / 2;
+            const radius = 140;
+            ctx.clearRect(0, 0, size, size);
+            // Draw wheel sectors
+            for (let i = 0; i < wheelNumbers.length; i++) {
+                const angleStart = (i / wheelNumbers.length) * 2 * Math.PI;
+                const angleEnd = ((i + 1) / wheelNumbers.length) * 2 * Math.PI;
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, angleStart, angleEnd);
+                ctx.closePath();
+                ctx.fillStyle = wheelNumbers[i].color === 'red' ? '#e74c3c' : wheelNumbers[i].color === 'black' ? '#222' : '#2ecc40';
+                ctx.fill();
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angleStart + (angleEnd - angleStart) / 2);
+                ctx.textAlign = 'right';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillStyle = '#fff';
+                ctx.fillText(wheelNumbers[i].num, radius - 10, 8);
+                ctx.restore();
+            }
+            // Draw wheel border
+            ctx.beginPath();
+            ctx.arc(center, center, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+            // Draw ball
+            let ballAngle = ((ballIndex + (spinning ? 0.5 : 0)) / wheelNumbers.length) * 2 * Math.PI - Math.PI/2;
+            let ballRadius = radius - 18;
+            ctx.beginPath();
+            ctx.arc(center + Math.cos(ballAngle) * ballRadius, center + Math.sin(ballAngle) * ballRadius, 12, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        document.getElementById('rouletteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let bet = parseFloat(document.getElementById('bet').value);
+            let color = document.getElementById('color').value;
+            let balance = parseFloat(sessionStorage.getItem('balance'));
+            if (isNaN(bet) || bet <= 0 || bet > balance) {
+                document.getElementById('rouletteResult').textContent = 'Invalid bet.';
+                return;
+            }
+            document.getElementById('bigRouletteCanvas').style.display = 'block';
+            document.getElementById('rouletteResult').textContent = '';
+            let spinIndex = Math.floor(Math.random() * wheelNumbers.length);
+            let result = wheelNumbers[spinIndex];
+            let ballPos = (spinIndex + Math.floor(Math.random() * 5) + 5) % wheelNumbers.length;
+            let frames = 60;
+            let current = 0;
+            function animateBall() {
+                let progress = current / frames;
+                let ballIndex = (ballPos + Math.floor((1 - progress) * wheelNumbers.length * 2)) % wheelNumbers.length;
+                drawRouletteWheel(spinIndex, ballIndex, true);
+                current++;
+                if (current < frames) {
+                    requestAnimationFrame(animateBall);
+                } else {
+                    drawRouletteWheel(spinIndex, spinIndex, false);
+                    setTimeout(() => {
+                        let win = 0;
+                        if (color === result.color) {
+                            if (color === 'green') win = +(bet * 35).toFixed(2);
+                            else win = +(bet * 2).toFixed(2);
+                            balance += win - bet;
+                            document.getElementById('rouletteResult').textContent = `It landed on ${result.num} (${result.color})! You won ${win.toFixed(2)} ZAR.`;
+                        } else {
+                            balance -= bet;
+                            document.getElementById('rouletteResult').textContent = `It landed on ${result.num} (${result.color}). You lost ${bet.toFixed(2)} ZAR.`;
+                        }
+                        sessionStorage.setItem('balance', balance.toFixed(2));
+                        updateBalance();
+                    }, 800);
+                }
+            }
+            animateBall();
+        });
+    });
+    </script>
+</body>
+</html>

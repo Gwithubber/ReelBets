@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REELBETS - Vegas Vault</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .slot-reels { display: flex; gap: 12px; justify-content: center; margin: 18px 0; }
+    .slot-reel { width: 60px; height: 60px; background: #181c2b; border: 2px solid #ffe066; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; color: #fff; }
+    .slot-btn { background: #ffe066; color: #222; border: none; border-radius: 8px; padding: 10px 28px; font-size: 1.2rem; cursor: pointer; margin-top: 10px; }
+    .feature { color: #ffe066; font-weight: bold; }
+    .info-modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .info-modal { background: #222; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; color: #fff; position: relative; }
+    .info-modal h2 { margin-top: 0; }
+    .info-modal ul { padding-left: 20px; }
+    .info-modal li { margin-bottom: 10px; }
+    .info-modal button { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+    .hide { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="reelbets-logo.svg" alt="REELBETS Logo" style="display:block;margin:24px auto 8px auto;width:140px;max-width:90vw;">
+    <h1>Vegas Vault</h1>
+    <div id="balanceDisplay"></div>
+    <form id="slotForm">
+      <label for="bet">Bet (ZAR):</label>
+      <input type="number" id="bet" name="bet" min="1" step="1" required>
+      <button type="submit" class="slot-btn">Spin</button>
+    </form>
+    <div class="slot-reels" id="slotReels"></div>
+    <div id="slotResult" class="message"></div>
+    <div class="feature">Feature: Vault Bonus! 3+ vaults (<span style='font-size:1.2em'>🔒</span>) trigger a vault pick for a random big win!</div>
+    <button id="infoBtn" class="slot-btn" style="margin-bottom:10px;float:right;">ℹ️ Info</button>
+    <nav><a href="home.html">Home</a></nav>
+  </div>
+  <div id="infoModalBg" class="info-modal-bg hide">
+    <div class="info-modal">
+      <button id="closeInfoModal">✖</button>
+      <h2>How to Win</h2>
+      <ul>
+        <li>3 or more vaults (🔒) trigger a vault pick bonus.</li>
+        <li>All 5 symbols the same: <b>25x</b> your bet.</li>
+        <li>First 3 symbols the same: <b>5x</b> your bet.</li>
+      </ul>
+    </div>
+  </div>
+  <script src="main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+        window.location.href = 'index.html';
+      }
+      function updateBalance() {
+        document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+      }
+      updateBalance();
+      const symbols = ['7️⃣','🔒','💎','🍀','🎰','💰'];
+      const vault = '🔒';
+      function spinReels() { return Array.from({length:5},()=>symbols[Math.floor(Math.random()*symbols.length)]); }
+      function payout(arr,bet) {
+        if (arr.filter(s=>s===vault).length>=3) return 'bonus';
+        if (arr.every(s=>s===arr[0])) return bet*25;
+        if (arr.slice(0,3).every(s=>s===arr[0])) return bet*5;
+        return 0;
+      }
+      document.getElementById('slotForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        let bet = parseFloat(document.getElementById('bet').value);
+        let balance = parseFloat(sessionStorage.getItem('balance'));
+        if (isNaN(bet) || bet<=0 || bet>balance) {
+          document.getElementById('slotResult').textContent = 'Invalid bet.';
+          return;
+        }
+        // Rolling animation
+        let finalReels = spinReels();
+        let rolling = [null, null, null, null, null];
+        let rollTimes = [700, 900, 1100, 1300, 1500];
+        let start = Date.now();
+        function animateReel(i) {
+          if (Date.now() - start < rollTimes[i]) {
+            let temp = symbols[Math.floor(Math.random()*symbols.length)];
+            rolling[i] = temp;
+            document.getElementById('slotReels').innerHTML = rolling.map((s,j)=>`<div class='slot-reel'>${s||''}</div>`).join('');
+            setTimeout(()=>animateReel(i), 120); // slowed down from 50ms to 120ms
+          } else {
+            rolling[i] = finalReels[i];
+            document.getElementById('slotReels').innerHTML = rolling.map((s,j)=>`<div class='slot-reel'>${s||''}</div>`).join('');
+            if (i<4) setTimeout(()=>animateReel(i+1), 180); // slowed down from 100ms to 180ms
+            else finish();
+          }
+        }
+        animateReel(0);
+        function finish() {
+          let win = payout(finalReels,bet);
+          if (win==='bonus') {
+            setTimeout(()=>{
+              let bonus = Math.floor(Math.random()*20+5)*bet;
+              let balance2 = balance-bet+bonus;
+              sessionStorage.setItem('balance', balance2.toFixed(2));
+              updateBalance();
+              document.getElementById('slotResult').textContent = `Vault Bonus! You cracked the vault and won ${bonus} ZAR!`;
+            }, 1200);
+          } else {
+            let balance2 = balance-bet+win;
+            sessionStorage.setItem('balance', balance2.toFixed(2));
+            updateBalance();
+            document.getElementById('slotResult').textContent = win>0?`You won ${win} ZAR!`:'No win, try again!';
+          }
+        }
+      });
+      document.getElementById('infoBtn').onclick = function() {
+        document.getElementById('infoModalBg').classList.remove('hide');
+      };
+      document.getElementById('closeInfoModal').onclick = function() {
+        document.getElementById('infoModalBg').classList.add('hide');
+      };
+    });
+  </script>
+</body>
+</html>

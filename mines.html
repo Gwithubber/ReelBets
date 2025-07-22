@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Mines</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mines Game</h1>
+        <div id="balanceDisplay"></div>
+        <form id="minesForm">
+            <label for="bet">Bet (ZAR):</label>
+            <input type="number" id="bet" name="bet" min="0.01" step="0.01" required>
+            <label for="bombs">Number of Bombs (1-10):</label>
+            <input type="number" id="bombs" name="bombs" min="1" max="10" value="3" required>
+            <button type="button" id="startMines">Start Game</button>
+        </form>
+        <div id="minesBoard" class="mines-board"></div>
+        <button id="cashOutBtn" style="display:none;margin-bottom:1em">Cash Out</button>
+        <div id="minesResult" class="message"></div>
+        <nav>
+            <a href="home.html">Home</a>
+        </nav>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    if (sessionStorage.getItem('age_verified') !== 'true' || !sessionStorage.getItem('balance')) {
+        window.location.href = 'index.html';
+    }
+    function updateBalance() {
+        document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+    }
+    updateBalance();
+    let gameState = null;
+    function startMinesGame() {
+        let bet = parseFloat(document.getElementById('bet').value);
+        let bombs = parseInt(document.getElementById('bombs').value, 10);
+        let balance = parseFloat(sessionStorage.getItem('balance'));
+        if (isNaN(bet) || bet <= 0 || bet > balance) {
+            document.getElementById('minesResult').textContent = 'Invalid bet.';
+            return;
+        }
+        if (isNaN(bombs) || bombs < 1 || bombs > 10) {
+            document.getElementById('minesResult').textContent = 'Bombs must be 1-10.';
+            return;
+        }
+        // Place bombs
+        let bombSet = new Set();
+        while (bombSet.size < bombs) {
+            bombSet.add(Math.floor(Math.random() * 20) + 1);
+        }
+        gameState = {
+            bet,
+            bombs,
+            bombSet,
+            picks: [],
+            finished: false
+        };
+        sessionStorage.setItem('balance', (balance - bet).toFixed(2));
+        updateBalance();
+        renderMinesBoard();
+        document.getElementById('cashOutBtn').style.display = 'inline-block';
+        document.getElementById('minesResult').textContent = 'Pick safe blocks!';
+    }
+    document.getElementById('startMines').onclick = startMinesGame;
+    // Add sound elements to the page
+    function addMinesSounds() {
+        if (document.getElementById('mines-sound-flip')) return;
+        const audioHtml = `
+            <audio id="mines-sound-flip" src="sounds/flip.mp3"></audio>
+            <audio id="mines-sound-bomb" src="sounds/bomb.mp3"></audio>
+            <audio id="mines-sound-diamond" src="sounds/diamond.mp3"></audio>
+            <audio id="mines-sound-cashout" src="sounds/cashout.mp3"></audio>
+        `;
+        document.body.insertAdjacentHTML('beforeend', audioHtml);
+    }
+    addMinesSounds();
+    function playSound(id) {
+        const el = document.getElementById(id);
+        if (el) { el.currentTime = 0; el.play(); }
+    }
+    function renderMinesBoard() {
+        let html = '';
+        for (let i = 1; i <= 20; i++) {
+            let picked = gameState && gameState.picks.includes(i);
+            html += `<div class='mines-block${picked ? ' flipped' : ''}' data-block='${i}'><div class='mines-block-inner'><div class='mines-block-front'></div><div class='mines-block-back'></div></div></div>`;
+        }
+        minesBoard.innerHTML = html;
+        if (gameState) {
+            gameState.picks.forEach(i => {
+                let block = document.querySelector(`.mines-block[data-block='${i}']`);
+                let back = block.querySelector('.mines-block-back');
+                if (gameState.bombSet.has(i)) {
+                    back.innerHTML = '<span class="bomb">💣</span>';
+                    block.classList.add('bomb');
+                } else {
+                    back.innerHTML = '<span class="diamond">💎</span>';
+                    block.classList.add('diamond');
+                }
+            });
+        }
+    }
+    minesBoard.onclick = function(e) {
+        if (!gameState || gameState.finished) return;
+        const block = e.target.closest('.mines-block');
+        if (!block) return;
+        let pick = parseInt(block.getAttribute('data-block'), 10);
+        if (gameState.picks.includes(pick)) return;
+        playSound('mines-sound-flip');
+        if (gameState.bombSet.has(pick)) {
+            gameState.picks.push(pick);
+            gameState.finished = true;
+            renderMinesBoard();
+            playSound('mines-sound-bomb');
+            document.getElementById('minesResult').textContent = `💥 You hit a mine! Lost ${gameState.bet} ZAR.`;
+            document.getElementById('cashOutBtn').style.display = 'none';
+        } else {
+            gameState.picks.push(pick);
+            renderMinesBoard();
+            playSound('mines-sound-diamond');
+            let reward = calcMinesReward(gameState.bet, gameState.bombs, gameState.picks.length);
+            document.getElementById('minesResult').textContent = `Safe! Current cashout: ${reward} ZAR. Pick again or cash out.`;
+        }
+    };
+    document.getElementById('cashOutBtn').onclick = function() {
+        if (!gameState || gameState.finished || gameState.picks.length === 0) return;
+        let reward = calcMinesReward(gameState.bet, gameState.bombs, gameState.picks.length);
+        let balance = parseFloat(sessionStorage.getItem('balance'));
+        sessionStorage.setItem('balance', (balance + reward).toFixed(2));
+        updateBalance();
+        playSound('mines-sound-cashout');
+        document.getElementById('minesResult').textContent = `You cashed out and won ${reward.toFixed(2)} ZAR!`;
+        document.getElementById('cashOutBtn').style.display = 'none';
+        gameState.finished = true;
+    };
+    function calcMinesReward(bet, bombs, safePicks) {
+        // Simple risk/reward: reward = bet * (1 + safePicks * bombs/10)
+        // Or use a more aggressive multiplier
+        let multiplier = 1;
+        for (let i = 0; i < safePicks; i++) {
+            multiplier *= (20 - bombs - i) / (20 - i);
+        }
+        multiplier = (1 / multiplier) * (1 - bombs/20);
+        return +(bet * multiplier).toFixed(2);
+    }
+    </script>
+</body>
+</html>

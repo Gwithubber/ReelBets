@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REELBETS - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container home-container">
+        <div class="home-header">
+            <img src="reelbets-logo.svg" alt="REELBETS Logo" class="home-logo" style="width:120px;max-width:90vw;">
+            <div>
+                <h1>REELBETS</h1>
+                <div id="userDisplay" style="font-size:1em;color:#ffe066;margin-bottom:4px;"></div>
+                <div id="balanceDisplay" class="home-balance"></div>
+                <a href="enter_money.html" class="deposit-btn" style="display:inline-block;margin-top:10px;margin-bottom:10px;background:#ffe066;color:#23243a;padding:8px 18px;border-radius:8px;font-weight:bold;text-decoration:none;">Deposit</a>
+                <div id="depositMessage" class="message" style="color:#28a745;"></div>
+            </div>
+        </div>
+        <div class="home-games">
+            <a href="mines.html" class="game-card mines-card">
+                <span class="game-emoji">💎💣</span>
+                <span class="game-title">Mines</span>
+            </a>
+            <a href="aviator.html" class="game-card aviator-card">
+                <span class="game-emoji">✈️</span>
+                <span class="game-title">Aviator</span>
+            </a>
+            <a href="dice.html" class="game-card dice-card">
+                <span class="game-emoji">🎲</span>
+                <span class="game-title">Dice</span>
+            </a>
+            <a href="roulette.html" class="game-card roulette-card">
+                <span class="game-emoji">🎡</span>
+                <span class="game-title">Roulette</span>
+            </a>
+            <a href="slot-games/" class="game-card slot-folder-card">
+                <span class="game-emoji">🎰</span>
+                <span class="game-title">Slot Games</span>
+            </a>
+            <a href="plinko.html" class="game-card plinko-card">
+                <span class="game-emoji">🟢</span>
+                <span class="game-title">Plinko</span>
+            </a>
+            <a href="blackjack.html" class="game-card blackjack-card">
+                <span class="game-emoji">🃏</span>
+                <span class="game-title">Blackjack</span>
+            </a>
+        </div>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+    <script src="main.js"></script>
+    <script>
+    // Redirect if not logged in
+    if (!sessionStorage.getItem('currentUser') || sessionStorage.getItem('age_verified') !== 'true') {
+        window.location.href = 'index.html';
+    }
+    document.getElementById('userDisplay').textContent = 'User: ' + sessionStorage.getItem('currentUser');
+    function updateBalanceDisplay() {
+        document.getElementById('balanceDisplay').textContent = 'Balance: ' + parseFloat(sessionStorage.getItem('balance')).toFixed(2) + ' ZAR';
+    }
+    updateBalanceDisplay();
+    document.getElementById('logoutBtn').onclick = function() {
+        sessionStorage.clear();
+        localStorage.removeItem('currentUser');
+        window.location.href = 'index.html';
+    };
+    </script>
+</body>
+</html>
